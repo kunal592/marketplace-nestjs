@@ -10,7 +10,9 @@ export function generateToken(
     secret: string,
     expiresIn: string,
 ): string {
-    return jwt.sign(payload, secret, { expiresIn });
+    return jwt.sign(payload, secret, {
+        expiresIn: expiresIn as unknown as number,
+    } as jwt.SignOptions);
 }
 
 export function verifyToken(token: string, secret: string): JwtPayload {
