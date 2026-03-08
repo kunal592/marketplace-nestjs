@@ -16,7 +16,9 @@ import { PayoutsModule } from './modules/payouts/payouts.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { TasksModule } from './modules/tasks/tasks.module';
+import { HealthModule } from './modules/health/health.module';
 import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
+import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
 @Module({
   imports: [
@@ -25,6 +27,12 @@ import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
       isGlobal: true,
       load: [appConfig],
     }),
+
+    // ── Security ──
+    ThrottlerModule.forRoot([{
+      ttl: 60000,
+      limit: 100,
+    }]),
 
     // ── Database ──
     PrismaModule,
@@ -43,8 +51,13 @@ import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
     ReviewsModule,
     AdminModule,
     TasksModule,
+    HealthModule,
   ],
   providers: [
+    {
+      provide: APP_GUARD,
+      useClass: ThrottlerGuard,
+    },
     {
       provide: APP_GUARD,
       useClass: SystemCooldownGuard,
