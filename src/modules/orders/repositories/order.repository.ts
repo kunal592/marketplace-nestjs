@@ -10,6 +10,7 @@ interface CartItemForOrder {
         vendorId: string;
     };
     variant: {
+        id: string;
         price: number;
     } | null;
     quantity: number;
@@ -26,6 +27,7 @@ export class OrderRepository {
                 vendorOrders: {
                     include: {
                         vendor: { select: { id: true, storeName: true } },
+                        items: true,
                     },
                 },
                 payment: true,
@@ -42,6 +44,7 @@ export class OrderRepository {
                 vendorOrders: {
                     include: {
                         vendor: { select: { id: true, storeName: true } },
+                        items: true,
                     },
                 },
                 payment: true,
@@ -59,6 +62,7 @@ export class OrderRepository {
                         payment: { select: { status: true } },
                     },
                 },
+                items: true,
             },
             orderBy: { createdAt: 'desc' },
         });
@@ -71,6 +75,7 @@ export class OrderRepository {
                 vendorOrders: {
                     include: {
                         vendor: { select: { id: true, storeName: true } },
+                        items: true,
                     },
                 },
                 payment: true,
@@ -93,7 +98,7 @@ export class OrderRepository {
         items: CartItemForOrder[],
         commissionPercent: number,
     ) {
-        return this.prisma.$transaction(async (tx) => {
+        return this.prisma.$transaction(async (tx: any) => {
             // Group items by vendor
             const vendorGroups = new Map<string, { items: CartItemForOrder[]; total: number }>();
 
@@ -136,6 +141,18 @@ export class OrderRepository {
                         vendorId,
                         vendorAmount,
                         commission,
+                        items: {
+                            create: group.items.map((item) => {
+                                const price = item.variant?.price ?? item.product.discountPrice ?? item.product.price;
+                                return {
+                                    productId: item.product.id,
+                                    variantId: item.variant?.id,
+                                    quantity: item.quantity,
+                                    price: price,
+                                    total: price * item.quantity,
+                                };
+                            }),
+                        },
                     },
                 });
 
@@ -163,7 +180,10 @@ export class OrderRepository {
                 where: { id: order.id },
                 include: {
                     vendorOrders: {
-                        include: { vendor: { select: { id: true, storeName: true } } },
+                        include: {
+                            vendor: { select: { id: true, storeName: true } },
+                            items: true,
+                        },
                     },
                     payment: true,
                 },
