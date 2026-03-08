@@ -1,8 +1,9 @@
-import { Controller, Post, Body, Param, Headers, UseGuards, RawBody } from '@nestjs/common';
+import { Controller, Post, Body, Param, Headers, UseGuards, RawBody, UseInterceptors } from '@nestjs/common';
 import { PaymentService } from '../services/payment.service';
 import { VerifyPaymentDto } from '../dto/payment.dto';
 import { JwtAuthGuard } from '../../../common/guards';
 import { CurrentUser } from '../../../common/decorators';
+import { IdempotencyInterceptor } from '../../../common/interceptors/idempotency.interceptor';
 
 @Controller('payments')
 export class PaymentController {
@@ -10,6 +11,7 @@ export class PaymentController {
 
     @Post('create-order/:orderId')
     @UseGuards(JwtAuthGuard)
+    @UseInterceptors(IdempotencyInterceptor)
     async createRazorpayOrder(
         @Param('orderId') orderId: string,
         @CurrentUser('id') userId: string,
@@ -19,6 +21,7 @@ export class PaymentController {
 
     @Post('verify')
     @UseGuards(JwtAuthGuard)
+    @UseInterceptors(IdempotencyInterceptor)
     async verifyPayment(
         @Body() dto: VerifyPaymentDto,
         @CurrentUser('id') userId: string,

@@ -15,6 +15,7 @@ import { WalletsModule } from './modules/wallets/wallets.module';
 import { PayoutsModule } from './modules/payouts/payouts.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { TasksModule } from './modules/tasks/tasks.module';
 import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
 
 @Module({
@@ -41,6 +42,7 @@ import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
     PayoutsModule,
     ReviewsModule,
     AdminModule,
+    TasksModule,
   ],
   providers: [
     {
