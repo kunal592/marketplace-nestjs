@@ -102,6 +102,7 @@ model Vendor {
   wallet         VendorWallet?
   payoutRequests PayoutRequest[]
   coupons        Coupon[]
+  shippingConfig VendorShippingConfig?
 
   @@map("vendors")
 }
@@ -219,6 +220,8 @@ model VendorOrder {
   id           String            @id @default(uuid())
   orderId      String
   vendorId     String
+  subtotal     Float             @default(0)
+  shippingCost Float             @default(0)
   status       VendorOrderStatus @default(CREATED)
   vendorAmount Float
   commission   Float
@@ -444,4 +447,19 @@ model Coupon {
   orders Order[]
 
   @@map("coupons")
+}
+
+model VendorShippingConfig {
+  id                    String   @id @default(uuid())
+  vendorId              String   @unique
+  baseShippingFee       Float    @default(0)
+  perKgRate             Float    @default(0)
+  freeShippingThreshold Float?
+  estimatedDeliveryDays Int      @default(3)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@map("vendor_shipping_configs")
 }

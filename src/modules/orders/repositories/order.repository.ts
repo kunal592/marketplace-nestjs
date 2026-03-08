@@ -118,18 +118,48 @@ export class OrderRepository {
                 group.total += itemTotal;
             }
 
-            // Calculate grand total
+            // Fetch shipping configs for all vendors in this order
+            const vendorIds = Array.from(vendorGroups.keys());
+            const vendorConfigs = await tx.vendorShippingConfig.findMany({
+                where: { vendorId: { in: vendorIds } },
+            });
+            const shippingMap = new Map();
+            for (const config of vendorConfigs) {
+                shippingMap.set(config.vendorId, config);
+            }
+
+            // Calculate grand total, eligible total, and shipping
             let totalAmount = 0;
             let eligibleTotal = 0;
+            let totalShippingCost = 0;
 
             for (const [vendorId, group] of vendorGroups) {
+                // Determine shipping cost
+                const config = shippingMap.get(vendorId);
+                let shippingCost = config?.baseShippingFee || 0;
+
+                // Add weight based shipping if needed (assuming quantity represents simple weight unit for now if perKgRate > 0)
+                if (config && config.perKgRate > 0) {
+                    const totalItems = group.items.reduce((acc, item) => acc + item.quantity, 0);
+                    shippingCost += totalItems * config.perKgRate;
+                }
+
+                // Check free shipping threshold
+                if (config && config.freeShippingThreshold && group.total >= config.freeShippingThreshold) {
+                    shippingCost = 0;
+                }
+
+                (group as any).shippingCost = shippingCost; // Mutate group to store shipping cost
+
                 totalAmount += group.total;
+                totalShippingCost += shippingCost;
+
                 if (coupon && (!coupon.vendorId || coupon.vendorId === vendorId)) {
                     eligibleTotal += group.total;
                 }
             }
 
-            // Apply coupon discount if any
+            // Apply coupon discount if any (on product total, not shipping)
             let discountAmount = 0;
             if (coupon && totalAmount >= coupon.minOrderAmount) {
                 if (coupon.discountType === 'PERCENTAGE') {
@@ -144,10 +174,11 @@ export class OrderRepository {
             }
 
             // Create order
+            const finalTotal = Math.max(0, totalAmount - discountAmount) + totalShippingCost;
             const order = await tx.order.create({
                 data: {
                     userId,
-                    totalAmount: Math.round((totalAmount - discountAmount) * 100) / 100,
+                    totalAmount: Math.round(finalTotal * 100) / 100,
                     shippingAddressId: address.id,
                     shippingAddress: address as any,
                     couponId: coupon ? coupon.id : null,
@@ -164,13 +195,19 @@ export class OrderRepository {
 
             // Create vendor orders + update wallets
             for (const [vendorId, group] of vendorGroups) {
-                const commission = Math.round(group.total * (commissionPercent / 100) * 100) / 100;
-                const vendorAmount = Math.round((group.total - commission) * 100) / 100;
+                const vendorShippingCost = (group as any).shippingCost || 0;
 
-                await tx.vendorOrder.create({
+                // Commission is only calculated against subtotal, excluding shipping
+                const commission = Math.round(group.total * (commissionPercent / 100) * 100) / 100;
+                // Vendor amount includes shipping cost since they fulfill it
+                const vendorAmount = Math.round((group.total - commission + vendorShippingCost) * 100) / 100;
+
+                const vendorOrder = await tx.vendorOrder.create({
                     data: {
                         orderId: order.id,
                         vendorId,
+                        subtotal: Math.round(group.total * 100) / 100,
+                        shippingCost: vendorShippingCost,
                         vendorAmount,
                         commission,
                         items: {
@@ -188,6 +225,22 @@ export class OrderRepository {
                     },
                 });
 
+                // Set estimated delivery dates for shipments directly mapped
+                const config = shippingMap.get(vendorId);
+                const estimatedDays = config?.estimatedDeliveryDays || 3;
+                const estimatedDeliveryDate = new Date();
+                estimatedDeliveryDate.setDate(estimatedDeliveryDate.getDate() + estimatedDays);
+
+                await tx.shipment.create({
+                    data: {
+                        vendorOrderId: vendorOrder.id,
+                        courier: 'TBD',
+                        shippingCost: vendorShippingCost,
+                        estimatedDelivery: estimatedDeliveryDate,
+                        status: 'CREATED',
+                    }
+                });
+
                 // Update vendor pending balance
                 await tx.vendorWallet.update({
                     where: { vendorId },
@@ -201,7 +254,7 @@ export class OrderRepository {
             await tx.payment.create({
                 data: {
                     orderId: order.id,
-                    amount: totalAmount,
+                    amount: Math.round(finalTotal * 100) / 100,
                 },
             });
 
