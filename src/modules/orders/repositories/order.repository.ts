@@ -97,6 +97,7 @@ export class OrderRepository {
         cartId: string,
         items: CartItemForOrder[],
         commissionPercent: number,
+        address: any,
     ) {
         return this.prisma.$transaction(async (tx: any) => {
             // Group items by vendor
@@ -127,6 +128,8 @@ export class OrderRepository {
                 data: {
                     userId,
                     totalAmount: Math.round(totalAmount * 100) / 100,
+                    shippingAddressId: address.id,
+                    shippingAddress: address as any,
                 },
             });
 

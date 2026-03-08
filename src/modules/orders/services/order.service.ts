@@ -19,7 +19,16 @@ export class OrderService {
         private readonly prisma: PrismaService,
     ) { }
 
-    async createOrder(userId: string) {
+    async createOrder(userId: string, shippingAddressId: string) {
+        // Fetch and validate the shipping address
+        const address = await this.prisma.address.findUnique({
+            where: { id: shippingAddressId },
+        });
+
+        if (!address || address.userId !== userId) {
+            throw new BadRequestException('Invalid shipping address');
+        }
+
         // Get cart with items
         const cart = await this.prisma.cart.findUnique({
             where: { userId },
@@ -67,6 +76,7 @@ export class OrderService {
             cart.id,
             cart.items,
             commissionPercent,
+            address,
         );
 
         this.logger.log(`Order created: ${order?.id} by user ${userId}`);

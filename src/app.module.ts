@@ -17,6 +17,7 @@ import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AdminModule } from './modules/admin/admin.module';
 import { TasksModule } from './modules/tasks/tasks.module';
 import { HealthModule } from './modules/health/health.module';
+import { AddressesModule } from './modules/addresses/addresses.module';
 import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
@@ -52,6 +53,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
     AdminModule,
     TasksModule,
     HealthModule,
+    AddressesModule,
   ],
   providers: [
     {
