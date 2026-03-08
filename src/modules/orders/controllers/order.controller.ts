@@ -19,7 +19,15 @@ export class OrderController {
         @CurrentUser('id') userId: string,
         @Body() dto: CreateOrderDto,
     ) {
-        return this.orderService.createOrder(userId, dto.shippingAddressId);
+        return this.orderService.createOrder(userId, dto.shippingAddressId, dto.couponCode);
+    }
+
+    @Post('apply-coupon')
+    async applyCoupon(
+        @CurrentUser('id') userId: string,
+        @Body() dto: { couponCode: string },
+    ) {
+        return this.orderService.applyCoupon(userId, dto.couponCode);
     }
 
     @Get('my')

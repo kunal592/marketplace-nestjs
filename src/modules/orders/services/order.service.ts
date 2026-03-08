@@ -19,7 +19,7 @@ export class OrderService {
         private readonly prisma: PrismaService,
     ) { }
 
-    async createOrder(userId: string, shippingAddressId: string) {
+    async createOrder(userId: string, shippingAddressId: string, couponCode?: string) {
         // Fetch and validate the shipping address
         const address = await this.prisma.address.findUnique({
             where: { id: shippingAddressId },
@@ -69,6 +69,15 @@ export class OrderService {
             }
         }
 
+        let coupon = null;
+        if (couponCode) {
+            const check = await this.applyCoupon(userId, couponCode, cart.items);
+            if (!check.valid) {
+                throw new BadRequestException('Invalid coupon');
+            }
+            coupon = check.coupon;
+        }
+
         const commissionPercent = this.configService.get<number>('platform.commissionPercent', 10);
 
         const order = await this.orderRepository.createOrder(
@@ -77,11 +86,71 @@ export class OrderService {
             cart.items,
             commissionPercent,
             address,
+            coupon,
         );
 
         this.logger.log(`Order created: ${order?.id} by user ${userId}`);
 
         return order;
+    }
+
+    async applyCoupon(userId: string, couponCode: string, predefinedItems?: any[]) {
+        const coupon = await this.prisma.coupon.findUnique({
+            where: { code: couponCode },
+        });
+
+        if (!coupon) throw new BadRequestException('Coupon not found');
+        if (coupon.expiresAt < new Date()) throw new BadRequestException('Coupon expired');
+        if (coupon.usageLimit && coupon.usedCount >= coupon.usageLimit) throw new BadRequestException('Coupon usage limit reached');
+
+        let items = predefinedItems;
+        if (!items) {
+            const cart = await this.prisma.cart.findUnique({
+                where: { userId },
+                include: { items: { include: { product: true, variant: true } } }
+            });
+            if (!cart || cart.items.length === 0) throw new BadRequestException('Cart is empty');
+            items = cart.items;
+        }
+
+        // Calculate order items total
+        let eligibleTotal = 0;
+        let orderTotal = 0;
+
+        for (const item of (items || [])) {
+            const price = item.variant?.price ?? item.product.discountPrice ?? item.product.price;
+            const lineTotal = price * item.quantity;
+            orderTotal += lineTotal;
+
+            if (!coupon.vendorId || coupon.vendorId === item.product.vendorId) {
+                eligibleTotal += lineTotal;
+            }
+        }
+
+        if (orderTotal < coupon.minOrderAmount) {
+            throw new BadRequestException(`Minimum order amount is ${coupon.minOrderAmount}`);
+        }
+
+        let discountAmount = 0;
+        if (coupon.discountType === 'PERCENTAGE') {
+            discountAmount = eligibleTotal * (coupon.discountValue / 100);
+            if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
+                discountAmount = coupon.maxDiscount;
+            }
+        } else {
+            discountAmount = coupon.discountValue;
+        }
+
+        // Ensure discount doesn't exceed eligible total
+        discountAmount = Math.min(discountAmount, eligibleTotal);
+
+        return {
+            valid: true,
+            coupon,
+            orderTotal,
+            discountAmount,
+            newTotal: Math.max(0, orderTotal - discountAmount)
+        };
     }
 
     async getMyOrders(userId: string) {

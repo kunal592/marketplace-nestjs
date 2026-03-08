@@ -98,6 +98,7 @@ export class OrderRepository {
         items: CartItemForOrder[],
         commissionPercent: number,
         address: any,
+        coupon?: any,
     ) {
         return this.prisma.$transaction(async (tx: any) => {
             // Group items by vendor
@@ -119,19 +120,47 @@ export class OrderRepository {
 
             // Calculate grand total
             let totalAmount = 0;
-            for (const [, group] of vendorGroups) {
+            let eligibleTotal = 0;
+
+            for (const [vendorId, group] of vendorGroups) {
                 totalAmount += group.total;
+                if (coupon && (!coupon.vendorId || coupon.vendorId === vendorId)) {
+                    eligibleTotal += group.total;
+                }
+            }
+
+            // Apply coupon discount if any
+            let discountAmount = 0;
+            if (coupon && totalAmount >= coupon.minOrderAmount) {
+                if (coupon.discountType === 'PERCENTAGE') {
+                    discountAmount = eligibleTotal * (coupon.discountValue / 100);
+                    if (coupon.maxDiscount && discountAmount > coupon.maxDiscount) {
+                        discountAmount = coupon.maxDiscount;
+                    }
+                } else {
+                    discountAmount = coupon.discountValue;
+                }
+                discountAmount = Math.min(discountAmount, eligibleTotal);
             }
 
             // Create order
             const order = await tx.order.create({
                 data: {
                     userId,
-                    totalAmount: Math.round(totalAmount * 100) / 100,
+                    totalAmount: Math.round((totalAmount - discountAmount) * 100) / 100,
                     shippingAddressId: address.id,
                     shippingAddress: address as any,
+                    couponId: coupon ? coupon.id : null,
                 },
             });
+
+            // If coupon was used natively hit the usage limit update count
+            if (coupon) {
+                await tx.coupon.update({
+                    where: { id: coupon.id },
+                    data: { usedCount: { increment: 1 } },
+                });
+            }
 
             // Create vendor orders + update wallets
             for (const [vendorId, group] of vendorGroups) {
