@@ -134,4 +134,78 @@ export class OrderService {
 
         return updated;
     }
+
+    async createShipment(vendorOrderId: string, vendorId: string, dto: any) {
+        const vendorOrder = await this.prisma.vendorOrder.findUnique({
+            where: { id: vendorOrderId },
+        });
+
+        if (!vendorOrder || vendorOrder.vendorId !== vendorId) {
+            throw new NotFoundException('Vendor order not found or unauthorized');
+        }
+
+        const existingShipment = await this.prisma.shipment.findUnique({
+            where: { vendorOrderId },
+        });
+
+        if (existingShipment) {
+            throw new BadRequestException('Shipment already exists for this order');
+        }
+
+        const shipment = await this.prisma.shipment.create({
+            data: {
+                ...dto,
+                vendorOrderId,
+                status: 'SHIPPED',
+            },
+        });
+
+        // Autoupdate order status
+        await this.updateVendorOrderStatus(vendorOrderId, vendorId, 'SHIPPED');
+
+        return shipment;
+    }
+
+    async updateTracking(vendorOrderId: string, vendorId: string, dto: any) {
+        const vendorOrder = await this.prisma.vendorOrder.findUnique({
+            where: { id: vendorOrderId },
+        });
+
+        if (!vendorOrder || vendorOrder.vendorId !== vendorId) {
+            throw new NotFoundException('Vendor order not found or unauthorized');
+        }
+
+        const shipment = await this.prisma.shipment.findUnique({
+            where: { vendorOrderId },
+        });
+
+        if (!shipment) {
+            throw new NotFoundException('Shipment not found');
+        }
+
+        return this.prisma.shipment.update({
+            where: { vendorOrderId },
+            data: dto,
+        });
+    }
+
+    async getTracking(orderId: string, userId: string) {
+        const order = await this.prisma.order.findUnique({
+            where: { id: orderId },
+            include: {
+                vendorOrders: {
+                    include: { shipment: true },
+                },
+            },
+        });
+
+        if (!order || order.userId !== userId) {
+            throw new NotFoundException('Order not found or unauthorized');
+        }
+
+        return order.vendorOrders.map((vo: any) => ({
+            vendorOrderId: vo.id,
+            shipment: vo.shipment,
+        }));
+    }
 }

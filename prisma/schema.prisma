@@ -221,8 +221,9 @@ model VendorOrder {
   updatedAt    DateTime          @updatedAt
 
   order  Order  @relation(fields: [orderId], references: [id], onDelete: Cascade)
-  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
-  items  OrderItem[]
+  vendor   Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  items    OrderItem[]
+  shipment Shipment?
 
   @@map("vendor_orders")
 }
@@ -376,4 +377,29 @@ model Address {
   orders Order[]
 
   @@map("addresses")
+}
+
+enum ShipmentStatus {
+  CREATED
+  SHIPPED
+  IN_TRANSIT
+  DELIVERED
+  FAILED
+  RETURNED
+}
+
+model Shipment {
+  id                String         @id @default(uuid())
+  vendorOrderId     String         @unique
+  courier           String
+  trackingNumber    String?
+  shippingCost      Float?
+  estimatedDelivery DateTime?
+  status            ShipmentStatus @default(CREATED)
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  vendorOrder VendorOrder @relation(fields: [vendorOrderId], references: [id], onDelete: Cascade)
+
+  @@map("shipments")
 }
