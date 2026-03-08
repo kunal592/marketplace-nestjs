@@ -1,0 +1,113 @@
+import { Injectable, Logger } from '@nestjs/common';
+import { PrismaService } from '../../../database/prisma.service';
+import { VendorStatus } from '@prisma/client';
+
+@Injectable()
+export class AdminService {
+    private readonly logger = new Logger(AdminService.name);
+
+    constructor(private readonly prisma: PrismaService) { }
+
+    async getAllVendors(status?: string) {
+        const where = status ? { status: status as VendorStatus } : undefined;
+
+        return this.prisma.vendor.findMany({
+            where,
+            include: {
+                user: { select: { id: true, name: true, email: true } },
+                _count: { select: { products: true, vendorOrders: true } },
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async approveVendor(vendorId: string, approved: boolean) {
+        const status = approved ? VendorStatus.APPROVED : VendorStatus.REJECTED;
+
+        const vendor = await this.prisma.vendor.update({
+            where: { id: vendorId },
+            data: { status },
+            include: {
+                user: { select: { name: true, email: true } },
+            },
+        });
+
+        this.logger.log(
+            `Vendor ${vendor.storeName} (${vendorId}) ${approved ? 'approved' : 'rejected'}`,
+        );
+
+        return vendor;
+    }
+
+    async getAllOrders() {
+        return this.prisma.order.findMany({
+            include: {
+                user: { select: { id: true, name: true, email: true } },
+                vendorOrders: {
+                    include: {
+                        vendor: { select: { id: true, storeName: true } },
+                    },
+                },
+                payment: true,
+            },
+            orderBy: { createdAt: 'desc' },
+        });
+    }
+
+    async getAnalytics() {
+        const [
+            totalUsers,
+            totalVendors,
+            totalProducts,
+            totalOrders,
+            totalRevenue,
+            pendingVendors,
+            recentOrders,
+        ] = await this.prisma.$transaction([
+            this.prisma.user.count(),
+            this.prisma.vendor.count({ where: { status: 'APPROVED' } }),
+            this.prisma.product.count({ where: { status: 'ACTIVE' } }),
+            this.prisma.order.count(),
+            this.prisma.order.aggregate({
+                where: { paymentStatus: 'PAID' },
+                _sum: { totalAmount: true },
+            }),
+            this.prisma.vendor.count({ where: { status: 'PENDING' } }),
+            this.prisma.order.findMany({
+                take: 10,
+                orderBy: { createdAt: 'desc' },
+                include: {
+                    user: { select: { name: true } },
+                    payment: { select: { status: true } },
+                },
+            }),
+        ]);
+
+        // Calculate total commission
+        const commissionData = await this.prisma.vendorOrder.aggregate({
+            _sum: { commission: true },
+        });
+
+        return {
+            totalUsers,
+            totalVendors,
+            totalProducts,
+            totalOrders,
+            totalRevenue: totalRevenue._sum.totalAmount || 0,
+            totalCommission: commissionData._sum.commission || 0,
+            pendingVendors,
+            recentOrders,
+        };
+    }
+
+    async getAllPayoutRequests() {
+        return this.prisma.payoutRequest.findMany({
+            include: {
+                vendor: {
+                    select: { id: true, storeName: true },
+                },
+            },
+            orderBy: { requestedAt: 'desc' },
+        });
+    }
+}
