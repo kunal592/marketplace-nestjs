@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { APP_GUARD } from '@nestjs/core';
 import { ConfigModule } from '@nestjs/config';
 import appConfig from './config/app.config';
 import { PrismaModule } from './database/prisma.module';
@@ -14,6 +15,7 @@ import { WalletsModule } from './modules/wallets/wallets.module';
 import { PayoutsModule } from './modules/payouts/payouts.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { AdminModule } from './modules/admin/admin.module';
+import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
 
 @Module({
   imports: [
@@ -39,6 +41,12 @@ import { AdminModule } from './modules/admin/admin.module';
     PayoutsModule,
     ReviewsModule,
     AdminModule,
+  ],
+  providers: [
+    {
+      provide: APP_GUARD,
+      useClass: SystemCooldownGuard,
+    },
   ],
 })
 export class AppModule { }

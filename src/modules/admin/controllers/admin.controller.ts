@@ -1,7 +1,7 @@
 import { Controller, Get, Patch, Param, Body, Query, UseGuards } from '@nestjs/common';
 import { AdminService } from '../services/admin.service';
 import { JwtAuthGuard, RolesGuard } from '../../../common/guards';
-import { Roles } from '../../../common/decorators';
+import { Roles, CurrentUser } from '../../../common/decorators';
 import { Role } from '../../../common/constants';
 import { IsBoolean, IsNotEmpty } from 'class-validator';
 import { PayoutService } from '../../payouts/services/payout.service';
@@ -16,6 +16,12 @@ class ProcessPayoutDto {
     @IsBoolean()
     @IsNotEmpty()
     approved!: boolean;
+}
+
+class ToggleCooldownDto {
+    @IsBoolean()
+    @IsNotEmpty()
+    enabled!: boolean;
 }
 
 @Controller('admin')
@@ -61,5 +67,13 @@ export class AdminController {
         @Body() dto: ProcessPayoutDto,
     ) {
         return this.payoutService.processPayoutRequest(id, dto.approved);
+    }
+
+    @Patch('system/cooldown')
+    async toggleCooldown(
+        @Body() dto: ToggleCooldownDto,
+        @CurrentUser('id') adminId: string,
+    ) {
+        return this.adminService.toggleCooldown(dto.enabled, adminId);
     }
 }

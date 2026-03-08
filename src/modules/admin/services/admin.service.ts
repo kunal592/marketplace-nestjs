@@ -110,4 +110,29 @@ export class AdminService {
             orderBy: { requestedAt: 'desc' },
         });
     }
+
+    async toggleCooldown(enabled: boolean, adminId: string) {
+        let config = await this.prisma.systemConfig.findFirst();
+
+        if (!config) {
+            config = await this.prisma.systemConfig.create({
+                data: { cooldownEnabled: enabled, updatedBy: adminId },
+            });
+            this.logger.log(`Admin ${adminId} created system config. Cooldown set to ${enabled}`);
+        } else {
+            const previousState = config.cooldownEnabled;
+            config = await this.prisma.systemConfig.update({
+                where: { id: config.id },
+                data: { cooldownEnabled: enabled, updatedBy: adminId },
+            });
+            this.logger.log(`Admin ${adminId} changed cooldown from ${previousState} to ${enabled}`);
+        }
+
+        return { cooldownEnabled: config.cooldownEnabled };
+    }
+
+    async getCooldownStatus() {
+        const config = await this.prisma.systemConfig.findFirst();
+        return { cooldownEnabled: config?.cooldownEnabled ?? false };
+    }
 }
