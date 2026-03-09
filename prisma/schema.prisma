@@ -25,6 +25,12 @@ enum VendorStatus {
   REJECTED
 }
 
+enum VerificationStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
 enum ProductStatus {
   DRAFT
   PENDING_APPROVAL
@@ -136,6 +142,7 @@ model Vendor {
   shippingConfig VendorShippingConfig?
   store          VendorStore?
   adCampaigns    AdCampaign[]
+  kyc            VendorKYC?
 
   @@map("vendors")
 }
@@ -589,5 +596,34 @@ model AdCampaign {
 
   @@map("ad_campaigns")
 }
+
+model VendorKYC {
+  id                 String             @id @default(uuid())
+  vendorId           String             @unique
+  businessName       String
+  taxId              String
+  bankAccount        String
+  identityDocument   String
+  verificationStatus VerificationStatus @default(PENDING)
+  createdAt          DateTime           @default(now())
+  updatedAt          DateTime           @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@map("vendor_kyc")
+}
+
+model AuditLog {
+  id         String   @id @default(uuid())
+  userId     String?
+  action     String
+  entityType String
+  entityId   String
+  metadata   Json     @default("{}")
+  createdAt  DateTime @default(now())
+
+  @@map("audit_logs")
+}
+
 
 

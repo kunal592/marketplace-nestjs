@@ -3,6 +3,25 @@ import { VendorService } from '../services';
 import { RegisterVendorDto, UpdateVendorDto } from '../dto';
 import { JwtAuthGuard } from '../../../common/guards';
 import { CurrentUser } from '../../../common/decorators';
+import { IsString, IsNotEmpty } from 'class-validator';
+
+export class SubmitKycDto {
+    @IsString()
+    @IsNotEmpty()
+    businessName!: string;
+
+    @IsString()
+    @IsNotEmpty()
+    taxId!: string;
+
+    @IsString()
+    @IsNotEmpty()
+    bankAccount!: string;
+
+    @IsString()
+    @IsNotEmpty()
+    identityDocument!: string;
+}
 
 @Controller('vendors')
 @UseGuards(JwtAuthGuard)
@@ -28,5 +47,18 @@ export class VendorController {
         @Body() dto: UpdateVendorDto,
     ) {
         return this.vendorService.updateProfile(userId, dto);
+    }
+
+    @Post('kyc')
+    async submitKyc(
+        @CurrentUser('id') userId: string,
+        @Body() dto: SubmitKycDto,
+    ) {
+        return this.vendorService.submitKyc(userId, dto);
+    }
+
+    @Get('kyc')
+    async getKycStatus(@CurrentUser('id') userId: string) {
+        return this.vendorService.getKycStatus(userId);
     }
 }

@@ -3,13 +3,13 @@ import {
     ConflictException,
     NotFoundException,
     ForbiddenException,
+    BadRequestException,
     Logger,
 } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { VendorRepository } from '../repositories';
 import { RegisterVendorDto, UpdateVendorDto } from '../dto';
 import { generateSlug } from '../../../utils/slug.util';
-import { Role } from '@prisma/client';
 
 @Injectable()
 export class VendorService {
@@ -40,11 +40,11 @@ export class VendorService {
             : storeSlug;
 
         // Create vendor + wallet and update user role
-        const vendor = await this.prisma.$transaction(async (tx) => {
+        const vendor = await this.prisma.$transaction(async (tx: any) => {
             // Update user role to VENDOR
             await tx.user.update({
                 where: { id: userId },
-                data: { role: Role.VENDOR },
+                data: { role: 'VENDOR' },
             });
 
             // Create vendor with wallet
@@ -96,5 +96,35 @@ export class VendorService {
         }
 
         return this.vendorRepository.update(vendor.id, updateData);
+    }
+
+    async submitKyc(userId: string, data: any) {
+        const vendor = await this.vendorRepository.findByUserId(userId);
+        if (!vendor) throw new NotFoundException('Vendor profile not found');
+
+        const existingKyc = await this.prisma.vendorKYC.findUnique({ where: { vendorId: vendor.id } });
+        if (existingKyc) {
+            if (existingKyc.verificationStatus === 'VERIFIED') throw new BadRequestException('KYC already verified');
+            if (existingKyc.verificationStatus === 'PENDING') throw new BadRequestException('KYC is already pending review');
+
+            // Allow update if REJECTED
+            return this.prisma.vendorKYC.update({
+                where: { vendorId: vendor.id },
+                data: { ...data, verificationStatus: 'PENDING' }
+            });
+        }
+
+        return this.prisma.vendorKYC.create({
+            data: { ...data, vendorId: vendor.id }
+        });
+    }
+
+    async getKycStatus(userId: string) {
+        const vendor = await this.vendorRepository.findByUserId(userId);
+        if (!vendor) throw new NotFoundException('Vendor profile not found');
+
+        return this.prisma.vendorKYC.findUnique({
+            where: { vendorId: vendor.id }
+        });
     }
 }

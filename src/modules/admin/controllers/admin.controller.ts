@@ -31,6 +31,12 @@ class RejectProductDto {
     reason!: string;
 }
 
+class VerifyVendorKycDto {
+    @IsBoolean()
+    @IsNotEmpty()
+    verify!: boolean;
+}
+
 @Controller('admin')
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles(Role.ADMIN)
@@ -100,5 +106,13 @@ export class AdminController {
         @Body() dto: RejectProductDto,
     ) {
         return this.adminService.rejectProduct(id, dto.reason);
+    }
+
+    @Patch('vendors/:id/verify')
+    async verifyVendorKyc(
+        @Param('id') id: string,
+        @Body() dto: VerifyVendorKycDto,
+    ) {
+        return this.adminService.verifyVendorKyc(id, dto.verify);
     }
 }

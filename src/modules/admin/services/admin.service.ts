@@ -1,4 +1,4 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { VendorStatus } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
@@ -192,5 +192,20 @@ export class AdminService {
         });
         this.logger.log(`Admin rejected product: ${productId}. Reason: ${reason}`);
         return product;
+    }
+
+    async verifyVendorKyc(vendorId: string, verify: boolean) {
+        const kyc = await this.prisma.vendorKYC.findUnique({ where: { vendorId } });
+        if (!kyc) throw new NotFoundException('Vendor KYC record not found');
+
+        const status = verify ? 'VERIFIED' : 'REJECTED';
+        const updatedKyc = await this.prisma.vendorKYC.update({
+            where: { vendorId },
+            data: { verificationStatus: status },
+        });
+
+        this.logger.log(`Vendor KYC for vendor ${vendorId} was marked as ${status}`);
+
+        return updatedKyc;
     }
 }
