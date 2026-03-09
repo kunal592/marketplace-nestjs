@@ -8,6 +8,7 @@ import {
 import { ConfigService } from '@nestjs/config';
 import { OrderRepository } from '../repositories/order.repository';
 import { PrismaService } from '../../../database/prisma.service';
+import { PaymentService } from '../../payments/services/payment.service';
 
 @Injectable()
 export class OrderService {
@@ -17,7 +18,153 @@ export class OrderService {
         private readonly orderRepository: OrderRepository,
         private readonly configService: ConfigService,
         private readonly prisma: PrismaService,
+        private readonly paymentService: PaymentService,
     ) { }
+
+    // ─── Order Cancellation ──────────────────────────────────
+    async cancelOrder(orderId: string, userId: string) {
+        return this.prisma.$transaction(async (tx: any) => {
+            // 1. Fetch order with all relations needed
+            const order = await tx.order.findUnique({
+                where: { id: orderId },
+                include: {
+                    vendorOrders: {
+                        include: {
+                            items: true,
+                        },
+                    },
+                    payment: true,
+                },
+            });
+
+            if (!order) {
+                throw new NotFoundException('Order not found');
+            }
+
+            // 2. Validate ownership
+            if (order.userId !== userId) {
+                throw new ForbiddenException('You can only cancel your own orders');
+            }
+
+            // 3. Validate cancellable status
+            const cancellableStatuses = ['CREATED', 'PROCESSING'];
+            if (!cancellableStatuses.includes(order.orderStatus)) {
+                throw new BadRequestException(
+                    `Order cannot be cancelled. Current status: ${order.orderStatus}. Only orders with status CREATED or PROCESSING can be cancelled.`,
+                );
+            }
+
+            // 4. Update all vendor orders to CANCELLED
+            for (const vendorOrder of order.vendorOrders) {
+                await tx.vendorOrder.update({
+                    where: { id: vendorOrder.id },
+                    data: { status: 'CANCELLED' },
+                });
+
+                // 5. Restore reserved stock for each item
+                for (const item of vendorOrder.items) {
+                    if (item.variantId) {
+                        await tx.productVariant.update({
+                            where: { id: item.variantId },
+                            data: { stock: { increment: item.quantity } },
+                        });
+                    } else {
+                        await tx.product.update({
+                            where: { id: item.productId },
+                            data: { stock: { increment: item.quantity } },
+                        });
+                    }
+                }
+
+                // 6. Reverse vendor pending balance
+                await tx.vendorWallet.update({
+                    where: { vendorId: vendorOrder.vendorId },
+                    data: {
+                        pendingBalance: { decrement: vendorOrder.vendorAmount },
+                    },
+                });
+
+                // Update shipment status to RETURNED if exists
+                const shipment = await tx.shipment.findUnique({
+                    where: { vendorOrderId: vendorOrder.id },
+                });
+                if (shipment) {
+                    await tx.shipment.update({
+                        where: { vendorOrderId: vendorOrder.id },
+                        data: { status: 'RETURNED' },
+                    });
+                }
+            }
+
+            // 7. Cancel any active stock reservations for this user's order items
+            const productIds = order.vendorOrders.flatMap(
+                (vo: any) => vo.items.map((item: any) => item.productId),
+            );
+            await tx.stockReservation.updateMany({
+                where: {
+                    userId,
+                    productId: { in: productIds },
+                    status: 'ACTIVE',
+                },
+                data: { status: 'CANCELLED' },
+            });
+
+            // 8. Handle refund if payment was completed
+            let refundResult = null;
+            if (order.paymentStatus === 'PAID' && order.payment?.razorpayPaymentId) {
+                try {
+                    refundResult = await this.paymentService.refundPayment(
+                        order.payment.razorpayPaymentId,
+                        order.totalAmount,
+                    );
+                    this.logger.log(
+                        `Refund initiated for order ${orderId}: ${JSON.stringify(refundResult)}`,
+                    );
+                } catch (error) {
+                    this.logger.error(
+                        `Refund failed for order ${orderId}: ${error}`,
+                    );
+                    // We still cancel the order but log the refund failure
+                }
+
+                // Update payment status to REFUNDED
+                await tx.payment.update({
+                    where: { orderId },
+                    data: { status: 'REFUNDED' },
+                });
+            }
+
+            // 9. Update order status
+            const cancelledOrder = await tx.order.update({
+                where: { id: orderId },
+                data: {
+                    orderStatus: 'CANCELLED',
+                    paymentStatus: order.paymentStatus === 'PAID' ? 'REFUNDED' : order.paymentStatus,
+                },
+                include: {
+                    vendorOrders: {
+                        include: {
+                            vendor: { select: { id: true, storeName: true } },
+                            items: true,
+                        },
+                    },
+                    payment: true,
+                },
+            });
+
+            this.logger.log(
+                `Order ${orderId} cancelled by user ${userId}. Refund: ${refundResult ? 'initiated' : 'not applicable'}`,
+            );
+
+            return {
+                message: 'Order cancelled successfully',
+                order: cancelledOrder,
+                refund: refundResult
+                    ? { status: 'initiated', details: refundResult }
+                    : { status: order.paymentStatus === 'PAID' ? 'pending' : 'not_applicable' },
+            };
+        });
+    }
 
     async createOrder(userId: string, shippingAddressId: string, couponCode?: string) {
         // Fetch and validate the shipping address

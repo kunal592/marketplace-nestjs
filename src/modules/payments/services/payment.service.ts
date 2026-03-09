@@ -229,4 +229,32 @@ export class PaymentService {
 
         return { received: true };
     }
+
+    // ─── Refund ──────────────────────────────────────────────
+    async refundPayment(razorpayPaymentId: string, amount: number) {
+        try {
+            const refund = await (this.razorpay.payments as any).refund(razorpayPaymentId, {
+                amount: Math.round(amount * 100), // Razorpay expects paise
+                speed: 'normal',
+            });
+
+            this.logger.log(
+                `Refund created: ${refund.id} for payment ${razorpayPaymentId}, amount: ${amount}`,
+            );
+
+            return {
+                refundId: refund.id,
+                paymentId: razorpayPaymentId,
+                amount,
+                status: refund.status,
+            };
+        } catch (error: any) {
+            this.logger.error(
+                `Razorpay refund failed for payment ${razorpayPaymentId}: ${error?.message || error}`,
+            );
+            throw new BadRequestException(
+                `Refund failed: ${error?.message || 'Unknown error'}`,
+            );
+        }
+    }
 }

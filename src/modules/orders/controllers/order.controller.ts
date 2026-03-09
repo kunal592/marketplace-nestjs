@@ -43,6 +43,14 @@ export class OrderController {
         return this.orderService.getOrderById(id, userId);
     }
 
+    @Post(':id/cancel')
+    async cancelOrder(
+        @Param('id') id: string,
+        @CurrentUser('id') userId: string,
+    ) {
+        return this.orderService.cancelOrder(id, userId);
+    }
+
     @Get(':id/tracking')
     async getTracking(
         @Param('id') id: string,
