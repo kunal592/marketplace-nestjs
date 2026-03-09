@@ -37,3 +37,12 @@ export enum PayoutStatus {
     REJECTED = 'REJECTED',
     COMPLETED = 'COMPLETED',
 }
+
+export enum ReturnStatus {
+    REQUESTED = 'REQUESTED',
+    APPROVED = 'APPROVED',
+    REJECTED = 'REJECTED',
+    PICKED_UP = 'PICKED_UP',
+    RECEIVED = 'RECEIVED',
+    REFUNDED = 'REFUNDED',
+}

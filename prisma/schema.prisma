@@ -61,6 +61,15 @@ enum PayoutStatus {
   COMPLETED
 }
 
+enum ReturnStatus {
+  REQUESTED
+  APPROVED
+  REJECTED
+  PICKED_UP
+  RECEIVED
+  REFUNDED
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model User {
@@ -75,11 +84,12 @@ model User {
 
   vendor  Vendor?
   cart    Cart?
-  orders       Order[]
-  reviews      Review[]
-  reservations StockReservation[]
-  addresses    Address[]
-  wishlists    Wishlist[]
+  orders         Order[]
+  reviews        Review[]
+  reservations   StockReservation[]
+  addresses      Address[]
+  wishlists      Wishlist[]
+  returnRequests ReturnRequest[]
 
   @@map("users")
 }
@@ -250,6 +260,7 @@ model OrderItem {
   vendorOrder    VendorOrder    @relation(fields: [vendorOrderId], references: [id], onDelete: Cascade)
   product        Product        @relation(fields: [productId], references: [id], onDelete: Restrict)
   variant        ProductVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
+  returnRequest  ReturnRequest?
 
   @@map("order_items")
 }
@@ -462,4 +473,20 @@ model VendorShippingConfig {
   vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
 
   @@map("vendor_shipping_configs")
+}
+
+model ReturnRequest {
+  id          String       @id @default(uuid())
+  orderItemId String       @unique
+  userId      String
+  reason      String
+  status      ReturnStatus @default(REQUESTED)
+  adminNote   String?
+  createdAt   DateTime     @default(now())
+  updatedAt   DateTime     @updatedAt
+
+  orderItem OrderItem @relation(fields: [orderItemId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("return_requests")
 }

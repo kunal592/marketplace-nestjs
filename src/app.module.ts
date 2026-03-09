@@ -20,6 +20,7 @@ import { HealthModule } from './modules/health/health.module';
 import { AddressesModule } from './modules/addresses/addresses.module';
 import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
+import { ReturnsModule } from './modules/returns/returns.module';
 import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
@@ -58,6 +59,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
     AddressesModule,
     WishlistModule,
     CouponsModule,
+    ReturnsModule,
   ],
   providers: [
     {
