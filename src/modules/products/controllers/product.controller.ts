@@ -1,7 +1,8 @@
 import {
     Controller, Get, Post, Patch, Delete,
-    Body, Param, Query, UseGuards,
+    Body, Param, Query, UseGuards, UseInterceptors, UploadedFile, BadRequestException
 } from '@nestjs/common';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { ProductService } from '../services/product.service';
 import { CreateProductDto, UpdateProductDto, ProductQueryDto } from '../dto/product.dto';
 import { JwtAuthGuard, RolesGuard } from '../../../common/guards';
@@ -30,6 +31,18 @@ export class ProductController {
         @Body() dto: CreateProductDto,
     ) {
         return this.productService.create(user.vendor.id, dto);
+    }
+
+    @Post('bulk-upload')
+    @UseGuards(JwtAuthGuard, RolesGuard)
+    @Roles(Role.VENDOR)
+    @UseInterceptors(FileInterceptor('file'))
+    async bulkUpload(
+        @UploadedFile() file: Express.Multer.File,
+        @CurrentUser() user: { id: string; vendor: { id: string } }
+    ) {
+        if (!file) throw new BadRequestException('CSV file is required');
+        return this.productService.bulkUpload(user.vendor.id, file.buffer);
     }
 
     @Patch(':id')

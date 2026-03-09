@@ -123,6 +123,7 @@ model Vendor {
   payoutRequests PayoutRequest[]
   coupons        Coupon[]
   shippingConfig VendorShippingConfig?
+  store          VendorStore?
 
   @@map("vendors")
 }
@@ -140,6 +141,22 @@ model Category {
   products Product[]
 
   @@map("categories")
+}
+
+model VendorStore {
+  id          String   @id @default(uuid())
+  vendorId    String   @unique
+  storeName   String
+  slug        String   @unique
+  logo        String?
+  banner      String?
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  vendor Vendor @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+
+  @@map("vendor_stores")
 }
 
 model Product {

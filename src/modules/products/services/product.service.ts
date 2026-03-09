@@ -2,25 +2,31 @@ import {
     Injectable,
     NotFoundException,
     ForbiddenException,
+    BadRequestException,
     Logger,
 } from '@nestjs/common';
+import { parse } from 'csv-parse/sync';
 import { ProductRepository } from '../repositories/product.repository';
 import { CreateProductDto, UpdateProductDto, ProductQueryDto } from '../dto/product.dto';
 import { generateUniqueSlug } from '../../../utils/slug.util';
 import { buildPaginatedResult, getPaginationOffset } from '../../../utils/pagination.util';
 import { Prisma } from '@prisma/client';
+import { PrismaService } from '../../../database/prisma.service';
 
 @Injectable()
 export class ProductService {
     private readonly logger = new Logger(ProductService.name);
 
-    constructor(private readonly productRepository: ProductRepository) { }
+    constructor(
+        private readonly productRepository: ProductRepository,
+        private readonly prisma: PrismaService,
+    ) { }
 
     async findAll(query: ProductQueryDto) {
         const { skip, take } = getPaginationOffset(query.page || 1, query.limit || 20);
 
         // Build where clause
-        const where: Prisma.ProductWhereInput = {
+        const where: any = {
             status: 'ACTIVE',
         };
 
@@ -46,7 +52,7 @@ export class ProductService {
         }
 
         // Build orderBy based on sort parameter
-        let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: 'desc' }; // default 'newest'
+        let orderBy: any = { createdAt: 'desc' }; // default 'newest'
         if (query.sort === 'price_asc') {
             orderBy = { price: 'asc' };
         } else if (query.sort === 'price_desc') {
@@ -78,7 +84,7 @@ export class ProductService {
     async create(vendorId: string, dto: CreateProductDto) {
         const slug = generateUniqueSlug(dto.name);
 
-        const productData: Prisma.ProductCreateInput = {
+        const productData: any = {
             name: dto.name,
             slug,
             description: dto.description,
@@ -117,7 +123,7 @@ export class ProductService {
             throw new ForbiddenException('You can only update your own products');
         }
 
-        const updateData: Prisma.ProductUpdateInput = {};
+        const updateData: any = {};
         if (dto.name) {
             updateData.name = dto.name;
             updateData.slug = generateUniqueSlug(dto.name);
@@ -145,5 +151,74 @@ export class ProductService {
         await this.productRepository.delete(productId);
         this.logger.log(`Product deleted: ${productId}`);
         return { message: 'Product deleted successfully' };
+    }
+
+    async bulkUpload(vendorId: string, fileBuffer: Buffer) {
+        try {
+            const records = parse(fileBuffer, { columns: true, skip_empty_lines: true }) as any[];
+            let successCount = 0;
+            const errors: string[] = [];
+
+            for (const [index, record] of records.entries()) {
+                try {
+                    const categorySearch = record.category ? record.category.trim() : null;
+                    if (!categorySearch) {
+                        throw new Error('Category is required');
+                    }
+
+                    // find category
+                    const category = await this.prisma.category.findFirst({
+                        where: {
+                            OR: [
+                                { slug: categorySearch },
+                                { name: categorySearch }
+                            ]
+                        }
+                    });
+
+                    if (!category) {
+                        throw new Error(`Category not found: ${categorySearch}`);
+                    }
+
+                    // For variant - assume it's valid JSON if provided
+                    let variants = [];
+                    if (record.variant) {
+                        try {
+                            variants = JSON.parse(record.variant);
+                            if (!Array.isArray(variants)) {
+                                throw new Error('Variant must be an array');
+                            }
+                        } catch (e) {
+                            throw new Error('Invalid variant JSON format');
+                        }
+                    }
+
+                    const productData = {
+                        name: record.name,
+                        categoryId: category.id,
+                        description: record.description || undefined,
+                        price: parseFloat(record.price),
+                        stock: parseInt(record.stock) || 0,
+                        variants: variants,
+                    };
+
+                    if (isNaN(productData.price)) throw new Error('Invalid price');
+
+                    await this.create(vendorId, productData);
+                    successCount++;
+                } catch (err: any) {
+                    errors.push(`Row ${index + 2}: ${err.message}`);
+                }
+            }
+
+            return {
+                message: 'Bulk upload completed',
+                successCount,
+                errorCount: errors.length,
+                errors,
+            };
+        } catch (error: any) {
+            throw new BadRequestException('Failed to process CSV: ' + error.message);
+        }
     }
 }
