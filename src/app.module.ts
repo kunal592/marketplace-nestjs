@@ -24,6 +24,8 @@ import { ReturnsModule } from './modules/returns/returns.module';
 import { TaxModule } from './modules/tax/tax.module';
 import { NotificationsModule } from './modules/notifications/notifications.module';
 import { StoresModule } from './modules/stores/stores.module';
+import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module';
+import { AdsModule } from './modules/ads/ads.module';
 import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
@@ -66,6 +68,8 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
     TaxModule,
     NotificationsModule,
     StoresModule,
+    FeatureFlagsModule,
+    AdsModule,
   ],
   providers: [
     {

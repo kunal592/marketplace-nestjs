@@ -79,6 +79,13 @@ enum NotificationType {
   SYSTEM
 }
 
+enum AdCampaignStatus {
+  ACTIVE
+  PAUSED
+  COMPLETED
+  EXPIRED
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model User {
@@ -124,6 +131,7 @@ model Vendor {
   coupons        Coupon[]
   shippingConfig VendorShippingConfig?
   store          VendorStore?
+  adCampaigns    AdCampaign[]
 
   @@map("vendors")
 }
@@ -183,6 +191,7 @@ model Product {
   orderItems   OrderItem[]
   reservations StockReservation[]
   wishlists    Wishlist[]
+  adCampaigns  AdCampaign[]
 
   @@map("products")
 }
@@ -546,4 +555,34 @@ model Notification {
 
   @@map("notifications")
 }
+
+model FeatureFlag {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  enabled     Boolean  @default(false)
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("feature_flags")
+}
+
+model AdCampaign {
+  id          String           @id @default(uuid())
+  vendorId    String
+  productId   String
+  budget      Float
+  bidAmount   Float            @default(0)
+  startDate   DateTime         @default(now())
+  endDate     DateTime
+  status      AdCampaignStatus @default(ACTIVE)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  vendor  Vendor  @relation(fields: [vendorId], references: [id], onDelete: Cascade)
+  product Product @relation(fields: [productId], references: [id], onDelete: Cascade)
+
+  @@map("ad_campaigns")
+}
+
 
