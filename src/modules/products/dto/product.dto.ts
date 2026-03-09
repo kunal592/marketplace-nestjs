@@ -118,11 +118,7 @@ export class ProductQueryDto {
 
     @IsOptional()
     @IsString()
-    sortBy?: string = 'createdAt';
-
-    @IsOptional()
-    @IsString()
-    sortOrder?: 'asc' | 'desc' = 'desc';
+    sort?: string = 'newest';
 
     @IsOptional()
     @IsNumber()

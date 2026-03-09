@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { ConfigService } from '@nestjs/config';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
+import { buildPaginatedResult, getPaginationOffset } from '../../../utils/pagination.util';
 
 interface CartItemForOrder {
     product: {
@@ -20,20 +22,37 @@ interface CartItemForOrder {
 export class OrderRepository {
     constructor(private readonly prisma: PrismaService) { }
 
-    async findByUserId(userId: string) {
-        return this.prisma.order.findMany({
-            where: { userId },
-            include: {
-                vendorOrders: {
-                    include: {
-                        vendor: { select: { id: true, storeName: true } },
-                        items: true,
+    async findByUserId(userId: string, query: PaginationDto) {
+        const { skip, take } = getPaginationOffset(query.page || 1, query.limit || 10);
+        let orderBy: any = { createdAt: 'desc' }; // default newest
+        if (query.sort === 'price_asc') {
+            orderBy = { totalAmount: 'asc' };
+        } else if (query.sort === 'price_desc') {
+            orderBy = { totalAmount: 'desc' };
+        } else if (query.sort === 'newest') {
+            orderBy = { createdAt: 'desc' };
+        }
+
+        const [data, total] = await this.prisma.$transaction([
+            this.prisma.order.findMany({
+                where: { userId },
+                include: {
+                    vendorOrders: {
+                        include: {
+                            vendor: { select: { id: true, storeName: true } },
+                            items: true,
+                        },
                     },
+                    payment: true,
                 },
-                payment: true,
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+                orderBy,
+                skip,
+                take,
+            }),
+            this.prisma.order.count({ where: { userId } }),
+        ]);
+
+        return buildPaginatedResult(data, total, query.page || 1, query.limit || 10);
     }
 
     async findById(id: string) {
@@ -52,36 +71,70 @@ export class OrderRepository {
         });
     }
 
-    async findVendorOrders(vendorId: string) {
-        return this.prisma.vendorOrder.findMany({
-            where: { vendorId },
-            include: {
-                order: {
-                    include: {
-                        user: { select: { id: true, name: true, email: true } },
-                        payment: { select: { status: true } },
+    async findVendorOrders(vendorId: string, query: PaginationDto) {
+        const { skip, take } = getPaginationOffset(query.page || 1, query.limit || 10);
+        let orderBy: any = { createdAt: 'desc' }; // default newest
+        if (query.sort === 'price_asc') {
+            orderBy = { vendorAmount: 'asc' };
+        } else if (query.sort === 'price_desc') {
+            orderBy = { vendorAmount: 'desc' };
+        } else if (query.sort === 'newest') {
+            orderBy = { createdAt: 'desc' };
+        }
+
+        const [data, total] = await this.prisma.$transaction([
+            this.prisma.vendorOrder.findMany({
+                where: { vendorId },
+                include: {
+                    order: {
+                        include: {
+                            user: { select: { id: true, name: true, email: true } },
+                            payment: { select: { status: true } },
+                        },
                     },
+                    items: true,
                 },
-                items: true,
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+                orderBy,
+                skip,
+                take,
+            }),
+            this.prisma.vendorOrder.count({ where: { vendorId } }),
+        ]);
+
+        return buildPaginatedResult(data, total, query.page || 1, query.limit || 10);
     }
 
-    async findAllOrders() {
-        return this.prisma.order.findMany({
-            include: {
-                user: { select: { id: true, name: true, email: true } },
-                vendorOrders: {
-                    include: {
-                        vendor: { select: { id: true, storeName: true } },
-                        items: true,
+    async findAllOrders(query: PaginationDto) {
+        const { skip, take } = getPaginationOffset(query.page || 1, query.limit || 10);
+        let orderBy: any = { createdAt: 'desc' }; // default newest
+        if (query.sort === 'price_asc') {
+            orderBy = { totalAmount: 'asc' };
+        } else if (query.sort === 'price_desc') {
+            orderBy = { totalAmount: 'desc' };
+        } else if (query.sort === 'newest') {
+            orderBy = { createdAt: 'desc' };
+        }
+
+        const [data, total] = await this.prisma.$transaction([
+            this.prisma.order.findMany({
+                include: {
+                    user: { select: { id: true, name: true, email: true } },
+                    vendorOrders: {
+                        include: {
+                            vendor: { select: { id: true, storeName: true } },
+                            items: true,
+                        },
                     },
+                    payment: true,
                 },
-                payment: true,
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+                orderBy,
+                skip,
+                take,
+            }),
+            this.prisma.order.count(),
+        ]);
+
+        return buildPaginatedResult(data, total, query.page || 1, query.limit || 10);
     }
 
     /**

@@ -5,6 +5,7 @@ import { Roles, CurrentUser } from '../../../common/decorators';
 import { Role } from '../../../common/constants';
 import { IsBoolean, IsNotEmpty } from 'class-validator';
 import { PayoutService } from '../../payouts/services/payout.service';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 class ApproveVendorDto {
     @IsBoolean()
@@ -47,8 +48,8 @@ export class AdminController {
     }
 
     @Get('orders')
-    async getAllOrders() {
-        return this.adminService.getAllOrders();
+    async getAllOrders(@Query() query: PaginationDto) {
+        return this.adminService.getAllOrders(query);
     }
 
     @Get('analytics')

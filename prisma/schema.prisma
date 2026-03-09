@@ -70,6 +70,15 @@ enum ReturnStatus {
   REFUNDED
 }
 
+enum NotificationType {
+  ORDER_CREATED
+  ORDER_SHIPPED
+  ORDER_DELIVERED
+  PAYOUT_APPROVED
+  REVIEW_RECEIVED
+  SYSTEM
+}
+
 // ─── Models ──────────────────────────────────────────────
 
 model User {
@@ -90,6 +99,7 @@ model User {
   addresses      Address[]
   wishlists      Wishlist[]
   returnRequests ReturnRequest[]
+  notifications  Notification[]
 
   @@map("users")
 }
@@ -505,3 +515,18 @@ model TaxRate {
   @@unique([country, state])
   @@map("tax_rates")
 }
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  type      NotificationType @default(SYSTEM)
+  title     String
+  message   String
+  isRead    Boolean          @default(false)
+  createdAt DateTime         @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+

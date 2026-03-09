@@ -45,10 +45,17 @@ export class ProductService {
             if (query.maxPrice !== undefined) where.price.lte = query.maxPrice;
         }
 
-        // Build orderBy
-        const orderBy: Prisma.ProductOrderByWithRelationInput = {
-            [query.sortBy || 'createdAt']: query.sortOrder || 'desc',
-        };
+        // Build orderBy based on sort parameter
+        let orderBy: Prisma.ProductOrderByWithRelationInput = { createdAt: 'desc' }; // default 'newest'
+        if (query.sort === 'price_asc') {
+            orderBy = { price: 'asc' };
+        } else if (query.sort === 'price_desc') {
+            orderBy = { price: 'desc' };
+        } else if (query.sort === 'rating') {
+            orderBy = { rating: 'desc' };
+        } else if (query.sort === 'newest') {
+            orderBy = { createdAt: 'desc' };
+        }
 
         const { data, total } = await this.productRepository.findAll({
             skip,

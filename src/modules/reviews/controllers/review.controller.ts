@@ -1,8 +1,9 @@
-import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards, Query } from '@nestjs/common';
 import { ReviewService } from '../services/review.service';
 import { CreateReviewDto } from '../dto/review.dto';
 import { JwtAuthGuard } from '../../../common/guards';
 import { CurrentUser } from '../../../common/decorators';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 @Controller('reviews')
 export class ReviewController {
@@ -18,7 +19,10 @@ export class ReviewController {
     }
 
     @Get('product/:productId')
-    async getProductReviews(@Param('productId') productId: string) {
-        return this.reviewService.getProductReviews(productId);
+    async getProductReviews(
+        @Param('productId') productId: string,
+        @Query() query: PaginationDto,
+    ) {
+        return this.reviewService.getProductReviews(productId, query);
     }
 }

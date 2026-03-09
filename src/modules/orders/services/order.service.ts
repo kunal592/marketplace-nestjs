@@ -10,6 +10,8 @@ import { OrderRepository } from '../repositories/order.repository';
 import { PrismaService } from '../../../database/prisma.service';
 import { PaymentService } from '../../payments/services/payment.service';
 import { TaxService } from '../../tax/services/tax.service';
+import { NotificationsService } from '../../notifications/services/notifications.service';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 @Injectable()
 export class OrderService {
@@ -21,6 +23,7 @@ export class OrderService {
         private readonly prisma: PrismaService,
         private readonly paymentService: PaymentService,
         private readonly taxService: TaxService,
+        private readonly notificationsService: NotificationsService,
     ) { }
 
     // ─── Order Cancellation ──────────────────────────────────
@@ -248,6 +251,16 @@ export class OrderService {
 
         this.logger.log(`Order created: ${order?.id} by user ${userId} (tax: ${taxPercentage}%)`);
 
+        // Send Notification
+        if (order) {
+            await this.notificationsService.createNotification(
+                userId,
+                'ORDER_CREATED',
+                'Order Confirmed!',
+                `Your order #${order.id} has been successfully placed.`,
+            );
+        }
+
         return order;
     }
 
@@ -310,8 +323,8 @@ export class OrderService {
         };
     }
 
-    async getMyOrders(userId: string) {
-        return this.orderRepository.findByUserId(userId);
+    async getMyOrders(userId: string, query: PaginationDto) {
+        return this.orderRepository.findByUserId(userId, query);
     }
 
     async getOrderById(orderId: string, userId: string) {
@@ -327,8 +340,8 @@ export class OrderService {
         return order;
     }
 
-    async getVendorOrders(vendorId: string) {
-        return this.orderRepository.findVendorOrders(vendorId);
+    async getVendorOrders(vendorId: string, query: PaginationDto) {
+        return this.orderRepository.findVendorOrders(vendorId, query);
     }
 
     async updateVendorOrderStatus(vendorOrderId: string, vendorId: string, status: string) {
@@ -356,6 +369,19 @@ export class OrderService {
                 },
             });
             this.logger.log(`Vendor order ${vendorOrderId} delivered. Wallet updated for vendor ${vendorId}`);
+        }
+
+        // Send shipment/delivery notification
+        const parentOrder = await this.prisma.order.findUnique({ where: { id: updated.orderId } });
+
+        if (parentOrder && (status === 'SHIPPED' || status === 'DELIVERED')) {
+            const type = status === 'SHIPPED' ? 'ORDER_SHIPPED' : 'ORDER_DELIVERED';
+            const title = status === 'SHIPPED' ? 'Order Shipped!' : 'Order Delivered!';
+            const msg = status === 'SHIPPED'
+                ? `Your items from vendor order #${vendorOrderId} have been shipped.`
+                : `Your items from vendor order #${vendorOrderId} have been delivered. Enjoy!`;
+
+            await this.notificationsService.createNotification(parentOrder.userId, type, title, msg);
         }
 
         return updated;

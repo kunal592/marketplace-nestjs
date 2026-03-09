@@ -1,5 +1,5 @@
 import {
-    Controller, Get, Post, Patch, Param, Body, UseGuards, UseInterceptors,
+    Controller, Get, Post, Patch, Param, Body, UseGuards, UseInterceptors, Query,
 } from '@nestjs/common';
 import { OrderService } from '../services/order.service';
 import { JwtAuthGuard, RolesGuard } from '../../../common/guards';
@@ -7,6 +7,7 @@ import { Roles, CurrentUser } from '../../../common/decorators';
 import { Role } from '../../../common/constants';
 import { IdempotencyInterceptor } from '../../../common/interceptors/idempotency.interceptor';
 import { CreateOrderDto } from '../dto/order.dto';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 @Controller('orders')
 @UseGuards(JwtAuthGuard)
@@ -31,8 +32,11 @@ export class OrderController {
     }
 
     @Get('my')
-    async getMyOrders(@CurrentUser('id') userId: string) {
-        return this.orderService.getMyOrders(userId);
+    async getMyOrders(
+        @CurrentUser('id') userId: string,
+        @Query() query: PaginationDto,
+    ) {
+        return this.orderService.getMyOrders(userId, query);
     }
 
     @Get(':id')

@@ -1,10 +1,11 @@
-import { Controller, Get, Post, Patch, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Param, Body, UseGuards, Query } from '@nestjs/common';
 import { OrderService } from '../services/order.service';
 import { JwtAuthGuard, RolesGuard } from '../../../common/guards';
 import { Roles, CurrentUser } from '../../../common/decorators';
 import { Role } from '../../../common/constants';
 import { IsNotEmpty, IsString } from 'class-validator';
 import { CreateShipmentDto, UpdateTrackingDto } from '../dto/shipment.dto';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
 
 class UpdateVendorOrderStatusDto {
     @IsString()
@@ -21,8 +22,9 @@ export class VendorOrderController {
     @Get()
     async getVendorOrders(
         @CurrentUser() user: { vendor: { id: string } },
+        @Query() query: PaginationDto,
     ) {
-        return this.orderService.getVendorOrders(user.vendor.id);
+        return this.orderService.getVendorOrders(user.vendor.id, query);
     }
 
     @Patch(':id/status')

@@ -22,6 +22,7 @@ import { WishlistModule } from './modules/wishlist/wishlist.module';
 import { CouponsModule } from './modules/coupons/coupons.module';
 import { ReturnsModule } from './modules/returns/returns.module';
 import { TaxModule } from './modules/tax/tax.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
 import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
@@ -62,6 +63,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
     CouponsModule,
     ReturnsModule,
     TaxModule,
+    NotificationsModule,
   ],
   providers: [
     {

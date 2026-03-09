@@ -1,6 +1,8 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { VendorStatus } from '@prisma/client';
+import { PaginationDto } from '../../../common/dto/pagination.dto';
+import { buildPaginatedResult, getPaginationOffset } from '../../../utils/pagination.util';
 
 @Injectable()
 export class AdminService {
@@ -39,19 +41,36 @@ export class AdminService {
         return vendor;
     }
 
-    async getAllOrders() {
-        return this.prisma.order.findMany({
-            include: {
-                user: { select: { id: true, name: true, email: true } },
-                vendorOrders: {
-                    include: {
-                        vendor: { select: { id: true, storeName: true } },
+    async getAllOrders(query: PaginationDto) {
+        const { skip, take } = getPaginationOffset(query.page || 1, query.limit || 10);
+        let orderBy: any = { createdAt: 'desc' }; // default newest
+        if (query.sort === 'price_asc') {
+            orderBy = { totalAmount: 'asc' };
+        } else if (query.sort === 'price_desc') {
+            orderBy = { totalAmount: 'desc' };
+        } else if (query.sort === 'newest') {
+            orderBy = { createdAt: 'desc' };
+        }
+
+        const [data, total] = await this.prisma.$transaction([
+            this.prisma.order.findMany({
+                include: {
+                    user: { select: { id: true, name: true, email: true } },
+                    vendorOrders: {
+                        include: {
+                            vendor: { select: { id: true, storeName: true } },
+                        },
                     },
+                    payment: true,
                 },
-                payment: true,
-            },
-            orderBy: { createdAt: 'desc' },
-        });
+                orderBy,
+                skip,
+                take,
+            }),
+            this.prisma.order.count(),
+        ]);
+
+        return buildPaginatedResult(data, total, query.page || 1, query.limit || 10);
     }
 
     async getAnalytics() {

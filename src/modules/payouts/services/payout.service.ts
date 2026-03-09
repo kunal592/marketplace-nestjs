@@ -6,12 +6,16 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
 import { RequestPayoutDto } from '../dto/payout.dto';
+import { NotificationsService } from '../../notifications/services/notifications.service';
 
 @Injectable()
 export class PayoutService {
     private readonly logger = new Logger(PayoutService.name);
 
-    constructor(private readonly prisma: PrismaService) { }
+    constructor(
+        private readonly prisma: PrismaService,
+        private readonly notificationsService: NotificationsService,
+    ) { }
 
     async requestPayout(vendorId: string, dto: RequestPayoutDto) {
         const wallet = await this.prisma.vendorWallet.findUnique({
@@ -89,6 +93,20 @@ export class PayoutService {
                 },
             });
             this.logger.log(`Payout approved: ${payoutId}`);
+
+            // Notify vendor
+            const pRequest = await this.prisma.payoutRequest.findUnique({
+                where: { id: payoutId },
+                include: { vendor: true },
+            });
+            if (pRequest?.vendor?.userId) {
+                await this.notificationsService.createNotification(
+                    pRequest.vendor.userId,
+                    'PAYOUT_APPROVED',
+                    'Payout Approved',
+                    `Your payout of ₹${pRequest.amount} has been approved and processed.`,
+                );
+            }
         } else {
             // Refund balance on rejection
             await this.prisma.$transaction([
