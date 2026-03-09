@@ -26,7 +26,11 @@ enum VendorStatus {
 }
 
 enum ProductStatus {
+  DRAFT
+  PENDING_APPROVAL
   ACTIVE
+  REJECTED
+  ARCHIVED
   INACTIVE
   OUT_OF_STOCK
 }
@@ -178,7 +182,8 @@ model Product {
   discountPrice Float?
   stock         Int           @default(0)
   images        String[]      @default([])
-  status        ProductStatus @default(ACTIVE)
+  status        ProductStatus @default(PENDING_APPROVAL)
+  rejectionReason String?
   rating        Float         @default(0)
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt

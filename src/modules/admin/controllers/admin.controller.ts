@@ -3,7 +3,7 @@ import { AdminService } from '../services/admin.service';
 import { JwtAuthGuard, RolesGuard } from '../../../common/guards';
 import { Roles, CurrentUser } from '../../../common/decorators';
 import { Role } from '../../../common/constants';
-import { IsBoolean, IsNotEmpty } from 'class-validator';
+import { IsBoolean, IsNotEmpty, IsString } from 'class-validator';
 import { PayoutService } from '../../payouts/services/payout.service';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 
@@ -23,6 +23,12 @@ class ToggleCooldownDto {
     @IsBoolean()
     @IsNotEmpty()
     enabled!: boolean;
+}
+
+class RejectProductDto {
+    @IsString()
+    @IsNotEmpty()
+    reason!: string;
 }
 
 @Controller('admin')
@@ -76,5 +82,23 @@ export class AdminController {
         @CurrentUser('id') adminId: string,
     ) {
         return this.adminService.toggleCooldown(dto.enabled, adminId);
+    }
+
+    @Get('products')
+    async getAllProducts(@Query() query: PaginationDto) {
+        return this.adminService.getAllProducts(query);
+    }
+
+    @Patch('products/:id/approve')
+    async approveProduct(@Param('id') id: string) {
+        return this.adminService.approveProduct(id);
+    }
+
+    @Patch('products/:id/reject')
+    async rejectProduct(
+        @Param('id') id: string,
+        @Body() dto: RejectProductDto,
+    ) {
+        return this.adminService.rejectProduct(id, dto.reason);
     }
 }

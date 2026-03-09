@@ -154,4 +154,43 @@ export class AdminService {
         const config = await this.prisma.systemConfig.findFirst();
         return { cooldownEnabled: config?.cooldownEnabled ?? false };
     }
+
+    async getAllProducts(query: PaginationDto) {
+        const { skip, take } = getPaginationOffset(query.page || 1, query.limit || 10);
+        let orderBy: any = { createdAt: 'desc' };
+
+        // We can pass a sort value or default to newest
+        const [data, total] = await this.prisma.$transaction([
+            this.prisma.product.findMany({
+                include: {
+                    vendor: { select: { id: true, storeName: true } },
+                    category: { select: { name: true } }
+                },
+                orderBy,
+                skip,
+                take,
+            }),
+            this.prisma.product.count(),
+        ]);
+
+        return buildPaginatedResult(data, total, query.page || 1, query.limit || 10);
+    }
+
+    async approveProduct(productId: string) {
+        const product = await this.prisma.product.update({
+            where: { id: productId },
+            data: { status: 'ACTIVE', rejectionReason: null },
+        });
+        this.logger.log(`Admin approved product: ${productId}`);
+        return product;
+    }
+
+    async rejectProduct(productId: string, reason: string) {
+        const product = await this.prisma.product.update({
+            where: { id: productId },
+            data: { status: 'REJECTED', rejectionReason: reason },
+        });
+        this.logger.log(`Admin rejected product: ${productId}. Reason: ${reason}`);
+        return product;
+    }
 }
