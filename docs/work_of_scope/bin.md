@@ -152,4 +152,70 @@ Disaster recovery endpoints.
 GET /health - (Public) [Rate Limited] Returns the alive status of the API, Postgres connection latency, and memory checks.
 GET /admin/system/cooldown - (Admin) Fetch the current cooldown lock state.
 PATCH /admin/system/cooldown - (Admin) CRITICAL LOCK. Toggles the system cooldown on/off. Instantly 403 blocks all transactional operations (checkout, payments, payouts) globally until fixed.
-Everything listed above is fully functional, heavily typed via TS DTOs, protected gracefully by system guards (Rate Limits, RBAC Roles, JWT), and database structured mapping relations directly. Let me know what to target next!
+
+15. Vendor Store Pages (StoresModule)
+Public vanity pages for merchants.
+
+GET /stores/:slug - (Public) Fetches store metadata, description, and logo via strict vanity routing.
+GET /stores/:slug/products - (Public) Fetches the entire product catalog for that store (supports paginated/sorted queries).
+
+16. Bulk Product Upload (ProductsModule extension)
+Imports massive catalogs quickly.
+
+POST /products/bulk-upload - (Vendor) Accepts multi-part CSV sheets dynamically mapping `name`, `category`, `price`, `stock`, `variant` injecting them into active statuses sequentially.
+
+17. Returns & Refunds (ReturnsModule)
+Handling reverse-logistics post-delivery.
+
+POST /orders/:id/return - (Auth) Customer applies for a strict return-reason form logic on individual order items.
+GET /returns/my - (Auth) View active processing status of return logic.
+PATCH /returns/:id - (Admin/Vendor) Mutate processing states down to `RECEIVED` or `APPROVED`.
+POST /refunds/process - (Admin) Sync return approvals straight to Razorpay issuing physical refund ledgers.
+
+18. Notifications Center (NotificationsModule)
+Passive global alert distribution.
+
+GET /notifications - (Auth/Vendor) Pulls tracking alerts (e.g., `ORDER_SHIPPED`, `PAYOUT_APPROVED`).
+PATCH /notifications/:id/read - (Auth) Mute alert statuses.
+PATCH /notifications/read-all - (Auth) Mark all pending streams read natively.
+
+19. Feature Flags (FeatureFlagsModule)
+Dynamic administration toggling logic.
+
+GET /features - (Public) Fetches currently enabled UX maps enabling dynamic front-end scaffolding natively.
+PATCH /admin/features/:key - (Admin) Adjust logic switches (e.g., `enableCoupons`, `enableWishlists`).
+
+20. Advertising Platform (AdsModule)
+Wallet funded internal placements.
+
+GET /public/ads - (Public) Resolves the top ranking (`budget`-backed) product campaigns to display globally across the storefront.
+POST /ads - (Vendor) Deducts wallet `balance` immediately mounting an active ad placement matching `bidAmount` prioritization logic natively.
+GET /ads - (Vendor) Track historical placements and metrics.
+PATCH /ads/:id - (Vendor) Terminate or PAUSE active schedules manually.
+GET /admin/ads - (Admin) Full supervision logic paginated cleanly.
+
+21. Product Moderation (AdminModule extensions)
+Gatekeeping catalog pollution natively.
+
+GET /admin/products - (Admin) Retrieves full views spanning `PENDING_APPROVAL` listings waiting action natively.
+PATCH /admin/products/:id/approve - (Admin) Transitions items directly to public searches securely.
+PATCH /admin/products/:id/reject - (Admin) Denies products dynamically retaining specific `rejectionReason` string payloads for Vendor feedback transparency.
+
+22. Vendor KYC Verification (VendorsModule & AdminModule extensions)
+Identity tracking protocols protecting platform legalities.
+
+POST /vendors/kyc - (Vendor) Maps Business Registrations, Identity Documents, and Tax details cleanly to `PENDING` states.
+GET /vendors/kyc - (Vendor) Fetches live resolution logic transparently securely.
+PATCH /admin/vendors/:id/verify - (Admin) Modulates identity bounds updating statuses transparently explicitly.
+
+23. Audit Logging (AuditModule)
+Metadata tracking bounds mapping complex timelines dynamically seamlessly!
+
+GET /admin/audit-logs - (Admin) Fetches comprehensive linear execution snapshots parsing natively.
+
+24. Vendor Analytics Dashboards (AnalyticsModule)
+Metric aggregation routing.
+
+GET /vendor/analytics - (Vendor) Maps `totalRevenue` (excluding cancelled traces), order tracking, conversion metrics, `topProducts`, and aggregates `monthlyRevenue` visually natively.
+
+Everything listed above is fully functional, heavily typed via TS DTOs, protected gracefully by system guards (Rate Limits, RBAC Roles, JWT), and database structured mapping relations directly. Modules support `PaginationDto` globally parsing out custom Sorting layers implicitly securely. Let me know what to target next!
