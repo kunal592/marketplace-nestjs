@@ -99,6 +99,7 @@ export class OrderRepository {
         commissionPercent: number,
         address: any,
         coupon?: any,
+        taxPercentage: number = 0,
     ) {
         return this.prisma.$transaction(async (tx: any) => {
             // Group items by vendor
@@ -173,12 +174,17 @@ export class OrderRepository {
                 discountAmount = Math.min(discountAmount, eligibleTotal);
             }
 
+            // Calculate tax on (subtotal - discount) — tax does not apply to shipping
+            const taxableAmount = Math.max(0, totalAmount - discountAmount);
+            const taxAmount = Math.round(taxableAmount * (taxPercentage / 100) * 100) / 100;
+
             // Create order
-            const finalTotal = Math.max(0, totalAmount - discountAmount) + totalShippingCost;
+            const finalTotal = Math.max(0, totalAmount - discountAmount) + taxAmount + totalShippingCost;
             const order = await tx.order.create({
                 data: {
                     userId,
                     totalAmount: Math.round(finalTotal * 100) / 100,
+                    taxAmount,
                     shippingAddressId: address.id,
                     shippingAddress: address as any,
                     couponId: coupon ? coupon.id : null,

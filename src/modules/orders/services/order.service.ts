@@ -9,6 +9,7 @@ import { ConfigService } from '@nestjs/config';
 import { OrderRepository } from '../repositories/order.repository';
 import { PrismaService } from '../../../database/prisma.service';
 import { PaymentService } from '../../payments/services/payment.service';
+import { TaxService } from '../../tax/services/tax.service';
 
 @Injectable()
 export class OrderService {
@@ -19,6 +20,7 @@ export class OrderService {
         private readonly configService: ConfigService,
         private readonly prisma: PrismaService,
         private readonly paymentService: PaymentService,
+        private readonly taxService: TaxService,
     ) { }
 
     // ─── Order Cancellation ──────────────────────────────────
@@ -227,6 +229,13 @@ export class OrderService {
 
         const commissionPercent = this.configService.get<number>('platform.commissionPercent', 10);
 
+        // Look up applicable tax rate based on shipping address
+        const taxRate = await this.taxService.findTaxRate(
+            address.country,
+            address.state ?? undefined,
+        );
+        const taxPercentage = taxRate?.taxPercentage ?? 0;
+
         const order = await this.orderRepository.createOrder(
             userId,
             cart.id,
@@ -234,9 +243,10 @@ export class OrderService {
             commissionPercent,
             address,
             coupon,
+            taxPercentage,
         );
 
-        this.logger.log(`Order created: ${order?.id} by user ${userId}`);
+        this.logger.log(`Order created: ${order?.id} by user ${userId} (tax: ${taxPercentage}%)`);
 
         return order;
     }

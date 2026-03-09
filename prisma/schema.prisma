@@ -209,6 +209,7 @@ model Order {
   id            String        @id @default(uuid())
   userId        String
   totalAmount   Float
+  taxAmount     Float         @default(0)
   paymentStatus     PaymentStatus @default(PENDING)
   orderStatus       OrderStatus   @default(CREATED)
   shippingAddressId String?
@@ -489,4 +490,18 @@ model ReturnRequest {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("return_requests")
+}
+
+model TaxRate {
+  id            String   @id @default(uuid())
+  country       String
+  state         String?
+  taxPercentage Float
+  label         String   @default("GST")
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@unique([country, state])
+  @@map("tax_rates")
 }
