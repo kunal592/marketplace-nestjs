@@ -27,6 +27,7 @@ import { StoresModule } from './modules/stores/stores.module';
 import { FeatureFlagsModule } from './modules/feature-flags/feature-flags.module';
 import { AdsModule } from './modules/ads/ads.module';
 import { AuditModule } from './modules/audit/audit.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 import { SystemCooldownGuard } from './common/guards/system-cooldown.guard';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
 
@@ -72,6 +73,7 @@ import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
     FeatureFlagsModule,
     AdsModule,
     AuditModule,
+    AnalyticsModule,
   ],
   providers: [
     {

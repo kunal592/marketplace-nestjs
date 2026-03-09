@@ -1,6 +1,5 @@
 import { Injectable, Logger, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../../database/prisma.service';
-import { VendorStatus } from '@prisma/client';
 import { PaginationDto } from '../../../common/dto/pagination.dto';
 import { buildPaginatedResult, getPaginationOffset } from '../../../utils/pagination.util';
 
@@ -10,8 +9,8 @@ export class AdminService {
 
     constructor(private readonly prisma: PrismaService) { }
 
-    async getAllVendors(status?: string) {
-        const where = status ? { status: status as VendorStatus } : undefined;
+    async getAllVendors(status?: any) {
+        const where = status ? { status: status as any } : undefined;
 
         return this.prisma.vendor.findMany({
             where,
@@ -24,7 +23,7 @@ export class AdminService {
     }
 
     async approveVendor(vendorId: string, approved: boolean) {
-        const status = approved ? VendorStatus.APPROVED : VendorStatus.REJECTED;
+        const status = approved ? 'APPROVED' : 'REJECTED';
 
         const vendor = await this.prisma.vendor.update({
             where: { id: vendorId },
@@ -192,6 +191,15 @@ export class AdminService {
         });
         this.logger.log(`Admin rejected product: ${productId}. Reason: ${reason}`);
         return product;
+    }
+
+    async updateVendorStatus(vendorId: string, status: any) {
+        const vendor = await this.prisma.vendor.update({
+            where: { id: vendorId },
+            data: { status },
+        });
+        this.logger.log(`Vendor ${vendorId} status updated to ${status}`);
+        return vendor;
     }
 
     async verifyVendorKyc(vendorId: string, verify: boolean) {
