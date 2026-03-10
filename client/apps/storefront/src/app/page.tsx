@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
+import { FeaturedProducts } from '@/components/product/FeaturedProducts';
 
 export default function Home() {
   return (
@@ -69,26 +70,7 @@ export default function Home() {
             </Link>
           </div>
 
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 gap-y-12">
-            {/* Map simulated products */}
-            {[1, 2, 3, 4].map((item) => (
-              <div key={item} className="group cursor-pointer">
-                <div className="relative aspect-[3/4] mb-4 overflow-hidden rounded-xl bg-zinc-100 dark:bg-zinc-800">
-                  <div className="absolute inset-0 transition-transform duration-700 group-hover:scale-105" />
-                  <div className="absolute bottom-0 left-0 right-0 p-4 opacity-0 translate-y-4 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-300 z-20">
-                    <Button className="w-full bg-black/80 backdrop-blur-md text-white hover:bg-black rounded-full" size="sm">
-                      Quick Add
-                    </Button>
-                  </div>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm text-muted-foreground uppercase tracking-wider font-medium">Studio {item}</p>
-                  <h3 className="font-semibold text-base leading-tight">Essential Oversized Tee</h3>
-                  <p className="text-sm">$55.00</p>
-                </div>
-              </div>
-            ))}
-          </div>
+          <FeaturedProducts />
         </div>
       </section>
     </div>
