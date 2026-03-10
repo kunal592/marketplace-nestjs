@@ -1,6 +1,9 @@
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Megaphone, Plus } from 'lucide-react';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 export default function AdsPage() {
     return (
@@ -10,7 +13,30 @@ export default function AdsPage() {
                     <h1 className="text-3xl font-bold tracking-tight">Advertising Hub</h1>
                     <p className="text-muted-foreground mt-1">Boost product visibility directly utilizing wallet balances.</p>
                 </div>
-                <Button><Plus className="mr-2 h-4 w-4" /> New Campaign</Button>
+                <Dialog>
+                    <DialogTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2">
+                        <Plus className="mr-2 h-4 w-4" /> New Campaign
+                    </DialogTrigger>
+                    <DialogContent className="sm:max-w-[425px]">
+                        <DialogHeader>
+                            <DialogTitle>Create Campaign</DialogTitle>
+                            <DialogDescription>
+                                Allocate wallet balance to boost a product's search ranking.
+                            </DialogDescription>
+                        </DialogHeader>
+                        <div className="grid gap-4 py-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="campaignName">Campaign Name</Label>
+                                <Input id="campaignName" placeholder="Summer 2026 Boost" />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="budget">Budget ($)</Label>
+                                <Input id="budget" type="number" placeholder="100" />
+                            </div>
+                        </div>
+                        <Button type="submit">Launch Campaign</Button>
+                    </DialogContent>
+                </Dialog>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">

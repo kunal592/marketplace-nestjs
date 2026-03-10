@@ -5,6 +5,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Plus, Search, MoreHorizontal } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 export default function ProductsPage() {
     return (
@@ -15,8 +17,53 @@ export default function ProductsPage() {
                     <p className="text-muted-foreground mt-1">Manage your catalog, inventory, and pricing.</p>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline">Bulk Upload</Button>
-                    <Button><Plus className="mr-2 h-4 w-4" /> Add Product</Button>
+                    <Dialog>
+                        <DialogTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 border border-input bg-background shadow-sm hover:bg-accent hover:text-accent-foreground h-9 px-4 py-2">
+                            Bulk Upload
+                        </DialogTrigger>
+                        <DialogContent>
+                            <DialogHeader>
+                                <DialogTitle>Bulk Upload Products</DialogTitle>
+                                <DialogDescription>Upload a CSV file containing your product catalog.</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="csv">CSV File</Label>
+                                    <Input id="csv" type="file" accept=".csv" />
+                                </div>
+                            </div>
+                            <Button type="submit">Upload CSV</Button>
+                        </DialogContent>
+                    </Dialog>
+
+                    <Dialog>
+                        <DialogTrigger className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground shadow hover:bg-primary/90 h-9 px-4 py-2">
+                            <Plus className="mr-2 h-4 w-4" /> Add Product
+                        </DialogTrigger>
+                        <DialogContent className="sm:max-w-[500px]">
+                            <DialogHeader>
+                                <DialogTitle>Add New Product</DialogTitle>
+                                <DialogDescription>Create a new product listing in your catalog.</DialogDescription>
+                            </DialogHeader>
+                            <div className="grid gap-4 py-4">
+                                <div className="space-y-2">
+                                    <Label htmlFor="name">Product Name</Label>
+                                    <Input id="name" placeholder="Oversized Heavy Tee" />
+                                </div>
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="price">Price ($)</Label>
+                                        <Input id="price" type="number" placeholder="45.99" />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="stock">Stock</Label>
+                                        <Input id="stock" type="number" placeholder="100" />
+                                    </div>
+                                </div>
+                            </div>
+                            <Button type="submit">Create Product</Button>
+                        </DialogContent>
+                    </Dialog>
                 </div>
             </div>
 
@@ -65,11 +112,9 @@ export default function ProductsPage() {
                                     <TableCell className="text-right">{120 - (i * 10)}</TableCell>
                                     <TableCell>
                                         <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" className="h-8 w-8 p-0">
-                                                    <span className="sr-only">Open menu</span>
-                                                    <MoreHorizontal className="h-4 w-4" />
-                                                </Button>
+                                            <DropdownMenuTrigger className="h-8 w-8 p-0 inline-flex items-center justify-center rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors text-muted-foreground">
+                                                <span className="sr-only">Open menu</span>
+                                                <MoreHorizontal className="h-4 w-4" />
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuLabel>Actions</DropdownMenuLabel>
